@@ -6,6 +6,10 @@ import os
 from gpiozero import Button, LED
 import logging
 import time
+from dotenv import load_dotenv
+from dataclasses import dataclass
+
+load_dotenv()
 
 logging.basicConfig(
     level=logging.INFO,
@@ -14,17 +18,36 @@ logging.basicConfig(
 )
 logger = logging.getLogger("Derbnet_Hardware_UI")
 
+@dataclass(frozen=True)
+class HardwareConfig:
+    timer_button_pin = 18   # header pin 12
+    led_running_pin = 23    # header pin 16
+    led_stopped_pin = 24    # header pin 18
+    track_timer = "NewBold"
+    track_lanes = 4    
+
+@dataclass(frozen=True)
+class ServerConfig:
+    timer_executable_path = "/home/thomas/DerbyNet/run_timer.sh"
+    timer_log_directory = "/home/thomas/DerbyNet/timerlogs"
+    server_url = "https://derbynet.buetowfamily.net/"
+    server_username = "Timer"
+    server_password = os.getenv("PASSWORD") or None
+    simulation = True
+    
+
 class Derbynet_Hardware_UI:
-    def __init__(self,button_pin:int,led_running_pin:int,led_stopped_pin:int,script_path:os.PathLike):
-        self.button = Button(button_pin,pull_up=True,bounce_time=.1)
-        self.led_running = LED(led_running_pin)
-        self.led_stopped = LED(led_stopped_pin)
+    def __init__(self,server_config=ServerConfig(), hardware_config=HardwareConfig()):
+        self.server_config = server_config
+        self.hardware_config = hardware_config
+
+        self.button = Button(self.hardware_config.timer_button_pin,pull_up=True,bounce_time=0.1)
+        self.led_running = LED(self.hardware_config.led_running_pin)
+        self.led_stopped = LED(self.hardware_config.led_stopped_pin)
         self.process = None
-        if os.path.isfile(script_path):
-            self.script_path = script_path
-        else:
-            self.script_path = None
-            logger.error(f'script path "{script_path}" not a file')
+        if not os.path.isfile(self.server_config.timer_executable_path):
+            self.server_config.timer_executable_path = None
+            logger.error(f'script path "{self.server_config.timer_executable_path}" not a file')
             raise ValueError("Provided script path is not a valid file")
         self._init_leds()
 
@@ -32,6 +55,8 @@ class Derbynet_Hardware_UI:
 
         signal.signal(signal.SIGTERM, self._handle_shutdown)
         signal.signal(signal.SIGINT, self._handle_shutdown)
+
+        
 
         logger.info('Timer UI initialized')
     
@@ -69,7 +94,7 @@ class Derbynet_Hardware_UI:
         logger.info('Starting Timer')
         self.led_running.on()
         try:
-            self.process = subprocess.Popen([self.script_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            self.process = subprocess.Popen([self.server_config.timer_executable_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             logger.debug(f'Started process with PID {self.process.pid}')
         except Exception as e:
             self.led_running.off()
@@ -99,14 +124,6 @@ class Derbynet_Hardware_UI:
         
 
 if __name__ == "__main__":
-    button_pin = 18         # header pin 12
-    led_running_pin = 23    # header pin 16
-    led_stopped_pin = 24    # header pin 18
-                            # 5V on pins 2,4
-                            # GND on pins 6,14,20
-    script_path = "/home/thomas/DerbyNet/run_timer.sh"
-
-    ui = Derbynet_Hardware_UI(button_pin,led_running_pin,led_stopped_pin,script_path)
-
+    ui = Derbynet_Hardware_UI()
     ui.run()
 
