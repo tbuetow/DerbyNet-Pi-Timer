@@ -1,0 +1,12 @@
+[Unit]
+Description=DerbyNet Timer Hardware UI Service
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/thomas/DerbyNet/derbynet_ui.py
+Restart=always
+User=thomas
+WorkingDirectory=/home/thomas/DerbyNet
+
+[Install]
+WantedBy=multi-user.target
