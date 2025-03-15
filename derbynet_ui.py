@@ -26,16 +26,16 @@ class Derbynet_Hardware_UI:
             self.script_path = None
             logger.error(f'script path "{script_path}" not a file')
             raise ValueError("Provided script path is not a valid file")
-        self.init_leds()
+        self._init_leds()
 
-        self.button.when_pressed = self.start_timer
+        self.button.when_pressed = self._toggle_timer
 
-        signal.signal(signal.SIGTERM, self.handle_shutdown)
-        signal.signal(signal.SIGINT, self.handle_shutdown)
+        signal.signal(signal.SIGTERM, self._handle_shutdown)
+        signal.signal(signal.SIGINT, self._handle_shutdown)
 
         logger.info('Timer UI initialized')
     
-    def init_leds(self):
+    def _init_leds(self):
         self.led_running.off()
         self.led_stopped.off()
         for i in range(3):
@@ -47,7 +47,22 @@ class Derbynet_Hardware_UI:
 
     def run(self):
         logger.info("Monitoring for button presses")
-        signal.pause()
+        while True:
+            if self.process:
+                if self.process.poll() is None:
+                    logging.debug("Process is alive")
+                else:
+                    logging.warning("Process has terminated.")
+                    self.stop_timer()
+            time.sleep(.5)
+            
+        # signal.pause() #Elegant but doesn't let me poll process
+    
+    def _toggle_timer(self):
+        if self.process:
+            self.stop_timer()
+        else:
+            self.start_timer()
 
     def start_timer(self):
         self.stop_timer()
@@ -77,7 +92,7 @@ class Derbynet_Hardware_UI:
         self.led_stopped.on()
 
 
-    def handle_shutdown(self, signum, frame):
+    def _handle_shutdown(self, signum, frame):
         logger.info('Shutting down like a good boy')
         self.stop_timer()
         exit(0)
@@ -94,5 +109,4 @@ if __name__ == "__main__":
     ui = Derbynet_Hardware_UI(button_pin,led_running_pin,led_stopped_pin,script_path)
 
     ui.run()
-
 
