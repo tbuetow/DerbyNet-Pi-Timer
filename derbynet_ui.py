@@ -12,7 +12,7 @@ from dataclasses import dataclass
 load_dotenv()
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s - %(levelname)8s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S"
 )
@@ -21,8 +21,8 @@ logger = logging.getLogger("Derbnet_Hardware_UI")
 @dataclass(frozen=True)
 class HardwareConfig:
     timer_button_pin: int = 18   # header pin 12
-    led_running_pin: int = 23    # header pin 16
-    led_stopped_pin: int = 24    # header pin 18
+    led_running_pin: int = 24    # header pin 18
+    led_stopped_pin: int = 23    # header pin 16
     track_timer_type: str = "NewBold"
     track_lanes: int = 4    
 
