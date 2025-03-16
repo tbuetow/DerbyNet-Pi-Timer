@@ -12,7 +12,7 @@ from dataclasses import dataclass
 load_dotenv()
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s - %(levelname)8s - %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S"
 )
@@ -20,15 +20,15 @@ logger = logging.getLogger("Derbnet_Hardware_UI")
 
 @dataclass(frozen=True)
 class HardwareConfig:
-    timer_button_pin = 18   # header pin 12
-    led_running_pin = 23    # header pin 16
-    led_stopped_pin = 24    # header pin 18
-    track_timer = "NewBold"
-    track_lanes = 4    
+    timer_button_pin: int = 18   # header pin 12
+    led_running_pin: int = 23    # header pin 16
+    led_stopped_pin: int = 24    # header pin 18
+    track_timer_type: str = "NewBold"
+    track_lanes: int = 4    
 
 @dataclass(frozen=True)
 class ServerConfig:
-    timer_executable_path = "/home/thomas/DerbyNet/run_timer.sh"
+    timer_executable_path = "/home/thomas/DerbyNet/derby-timer.jar"
     timer_log_directory = "/home/thomas/DerbyNet/timerlogs"
     server_url = "https://derbynet.buetowfamily.net/"
     server_username = "Timer"
@@ -75,7 +75,8 @@ class Derbynet_Hardware_UI:
         while True:
             if self.process:
                 if self.process.poll() is None:
-                    logging.debug("Process is alive")
+                    for line in self.process.stdout:
+                        logging.debug(line.decode().strip())
                 else:
                     logging.warning("Process has terminated.")
                     self.stop_timer()
@@ -94,11 +95,26 @@ class Derbynet_Hardware_UI:
         logger.info('Starting Timer')
         self.led_running.on()
         try:
-            self.process = subprocess.Popen([self.server_config.timer_executable_path], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            command = [
+                        "java",
+                        "-jar", self.server_config.timer_executable_path,
+                        "-logdir", self.server_config.timer_log_directory,
+                        "-u", self.server_config.server_username,
+                        "-p", self.server_config.server_password,
+                        "-d", self.hardware_config.track_timer_type,
+                        "-lanes", str(self.hardware_config.track_lanes),
+                        "-x",
+                    ]
+            if self.server_config.simulation:
+                command.append("-simulate-timer")
+            command.append(self.server_config.server_url)
+
+            self.process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             logger.debug(f'Started process with PID {self.process.pid}')
         except Exception as e:
             self.led_running.off()
             logger.error(f'Failted to start timer: {e}')
+            logger.exception(e)
         finally:
             self.led_stopped.off()
 
