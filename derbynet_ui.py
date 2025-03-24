@@ -24,7 +24,9 @@ class HardwareConfig:
     led_running_pin: int = 24    # header pin 18
     led_stopped_pin: int = 23    # header pin 16
     track_timer_type: str = "NewBold"
-    track_lanes: int = 4    
+    track_lanes: int = 6    
+    timer_delay_reset_after_race: int = 10
+    timer_reset_after_start: int = 10
 
 @dataclass(frozen=True)
 class ServerConfig:
@@ -33,7 +35,7 @@ class ServerConfig:
     server_url = "https://derbynet.buetowfamily.net/"
     server_username = "Timer"
     server_password = os.getenv("PASSWORD") or None
-    simulation = True
+    simulation = False
     
 
 class Derbynet_Hardware_UI:
@@ -103,6 +105,8 @@ class Derbynet_Hardware_UI:
                         "-p", self.server_config.server_password,
                         "-d", self.hardware_config.track_timer_type,
                         "-lanes", str(self.hardware_config.track_lanes),
+                        "-reset-after-start", str(self.hardware_config.timer_reset_after_start),
+                        "-delay-reset-after-race", str(self.hardware_config.timer_delay_reset_after_race),
                         "-x",
                     ]
             if self.server_config.simulation:
